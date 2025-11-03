@@ -47,12 +47,50 @@ export interface RouteData {
   id: string;
   name: string;
   version: string;
-  consumerEndpoint: string;
+  consumerEndpoint: {
+    template: string;
+    methods: string[];
+  };
+  lbStrategy: string;
+  stickyEnabled: boolean;
+  authorization: {
+    authenticateBy: string;
+    permissions: string[];
+  };
+  filters: string[];
   gatewayDeployment: {
     id: string;
     name: string;
     revision: string;
   };
+}
+
+export interface RouteChange {
+  routeId: string;
+  routeName: string;
+  current: RouteData;
+  proposed: RouteData;
+  changes: {
+    lbStrategy?: { from: string; to: string };
+    stickyEnabled?: { from: boolean; to: boolean };
+    methods?: { from: string[]; to: string[] };
+    permissions?: { from: string[]; to: string[] };
+    filters?: { added: string[]; removed: string[] };
+  };
+}
+
+export interface GatewayDeploymentInfo {
+  id: string;
+  name: string;
+  currentRevision: string;
+  targetRevision: string;
+  namespaces: NamespaceInfo[];
+}
+
+export interface NamespaceInfo {
+  id: string;
+  name: string;
+  podCount: number;
 }
 
 export interface DeploymentEvent {

@@ -44,14 +44,6 @@ export function DeploymentStrategySelector({
         </h3>
         <div className="space-y-1 text-sm text-gray-600">
           <div className="flex justify-between">
-            <span>Route:</span>
-            <span className="font-medium text-gray-900">{route.name}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Version:</span>
-            <span className="font-medium text-gray-900">{route.version}</span>
-          </div>
-          <div className="flex justify-between">
             <span>Gateway Deployment:</span>
             <span className="font-medium text-gray-900">
               {route.gatewayDeployment.name} ({route.gatewayDeployment.revision})

@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { DeploymentStrategy, RouteData, WorkloadPod, StrategyConfigOptions } from './types/deployment.types';
+import {
+  DeploymentStrategy,
+  RouteData,
+  WorkloadPod,
+  StrategyConfigOptions,
+  GatewayDeploymentInfo,
+  NamespaceInfo,
+  RouteChange,
+} from './types/deployment.types';
+import { GatewayDeploymentSelector } from './GatewayDeploymentSelector';
+import { RouteSelectionStep } from './RouteSelectionStep';
 import { DeploymentStrategySelector } from './DeploymentStrategySelector';
 import { DeploymentStrategyConfig } from './DeploymentStrategyConfig';
 import { DeploymentProgress } from './DeploymentProgress';
@@ -12,13 +22,15 @@ import { cn } from '../../lib/utils';
 interface RouteDeploymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  route: RouteData;
-  targetPods: WorkloadPod[];
+  gatewayDeployment: GatewayDeploymentInfo;
+  routeChanges: RouteChange[];
 }
 
-type Step = 'strategy' | 'config' | 'progress' | 'summary';
+type Step = 'gateway' | 'routes' | 'strategy' | 'config' | 'progress' | 'summary';
 
 const MODAL_SIZES: Record<Step, string> = {
+  gateway: 'max-w-2xl',
+  routes: 'max-w-4xl',
   strategy: 'max-w-2xl',
   config: 'max-w-2xl',
   progress: 'max-w-6xl',
@@ -28,12 +40,18 @@ const MODAL_SIZES: Record<Step, string> = {
 export function RouteDeploymentModal({
   isOpen,
   onClose,
-  route,
-  targetPods,
+  gatewayDeployment,
+  routeChanges,
 }: RouteDeploymentModalProps) {
-  const [currentStep, setCurrentStep] = useState<Step>('strategy');
+  const [currentStep, setCurrentStep] = useState<Step>('gateway');
+  const [selectedNamespace, setSelectedNamespace] = useState<NamespaceInfo | null>(null);
+  const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState<DeploymentStrategy>('rolling');
   const [_strategyConfig, setStrategyConfig] = useState<StrategyConfigOptions | null>(null);
+  const [targetPods, setTargetPods] = useState<WorkloadPod[]>([]);
+  const [selectedRoutes, setSelectedRoutes] = useState<RouteData[]>([]);
+
+  const mockRoute = selectedRoutes[0] || routeChanges[0]?.proposed;
 
   const {
     simulate,
@@ -47,8 +65,8 @@ export function RouteDeploymentModal({
   } = useDeploymentSimulation(
     selectedStrategy,
     targetPods,
-    route,
-    route.gatewayDeployment.revision
+    mockRoute,
+    gatewayDeployment.targetRevision
   );
 
   useEffect(() => {
@@ -56,6 +74,40 @@ export function RouteDeploymentModal({
       setCurrentStep('summary');
     }
   }, [summary]);
+
+  useEffect(() => {
+    if (selectedNamespace) {
+      const pods: WorkloadPod[] = [];
+      for (let i = 0; i < selectedNamespace.podCount; i++) {
+        pods.push({
+          id: `pod-${i + 1}`,
+          name: `gateway-pod-${selectedNamespace.name}-${i + 1}`,
+          ip: `10.0.${Math.floor(i / 10)}.${(i % 10) + 10}`,
+          nodeName: `node-${Math.floor(i / 4) + 1}`,
+          namespace: {
+            id: selectedNamespace.id,
+            name: selectedNamespace.name,
+          },
+        });
+      }
+      setTargetPods(pods);
+    }
+  }, [selectedNamespace]);
+
+  useEffect(() => {
+    const routes = routeChanges
+      .filter((rc) => selectedRouteIds.includes(rc.routeId))
+      .map((rc) => rc.proposed);
+    setSelectedRoutes(routes);
+  }, [selectedRouteIds, routeChanges]);
+
+  const handleNamespaceSelected = () => {
+    setCurrentStep('routes');
+  };
+
+  const handleRoutesSelected = () => {
+    setCurrentStep('strategy');
+  };
 
   const handleStrategySelected = () => {
     setCurrentStep('config');
@@ -80,14 +132,18 @@ export function RouteDeploymentModal({
       if (!confirmed) return;
       cancel();
     }
-    setCurrentStep('strategy');
+    setCurrentStep('gateway');
+    setSelectedNamespace(null);
+    setSelectedRouteIds([]);
     setSelectedStrategy('rolling');
     setStrategyConfig(null);
+    setTargetPods([]);
+    setSelectedRoutes([]);
     onClose();
   };
 
   const handleRetry = () => {
-    setCurrentStep('strategy');
+    setCurrentStep('gateway');
     setStrategyConfig(null);
   };
 
@@ -106,7 +162,9 @@ export function RouteDeploymentModal({
         >
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl z-10">
             <Dialog.Title className="text-xl font-semibold text-gray-900">
-              {currentStep === 'strategy' && 'Route Deployment'}
+              {currentStep === 'gateway' && 'Gateway Deployment Configuration'}
+              {currentStep === 'routes' && 'Select Routes'}
+              {currentStep === 'strategy' && 'Deployment Strategy'}
               {currentStep === 'config' && 'Configure Deployment'}
               {currentStep === 'progress' && 'Deployment in Progress'}
               {currentStep === 'summary' && 'Deployment Summary'}
@@ -122,11 +180,31 @@ export function RouteDeploymentModal({
           </div>
 
           <div className="p-6">
-            {currentStep === 'strategy' && (
+            {currentStep === 'gateway' && (
+              <GatewayDeploymentSelector
+                gatewayDeployment={gatewayDeployment}
+                selectedNamespace={selectedNamespace}
+                onNamespaceSelect={setSelectedNamespace}
+                onNext={handleNamespaceSelected}
+                onCancel={handleClose}
+              />
+            )}
+
+            {currentStep === 'routes' && (
+              <RouteSelectionStep
+                routeChanges={routeChanges}
+                selectedRouteIds={selectedRouteIds}
+                onRouteSelectionChange={setSelectedRouteIds}
+                onNext={handleRoutesSelected}
+                onBack={() => setCurrentStep('gateway')}
+              />
+            )}
+
+            {currentStep === 'strategy' && mockRoute && (
               <DeploymentStrategySelector
                 selectedStrategy={selectedStrategy}
                 onStrategyChange={setSelectedStrategy}
-                route={route}
+                route={mockRoute}
                 pods={targetPods}
                 onNext={handleStrategySelected}
                 onCancel={handleClose}
@@ -142,17 +220,17 @@ export function RouteDeploymentModal({
               />
             )}
 
-            {currentStep === 'progress' && (
+            {currentStep === 'progress' && mockRoute && (
               <DeploymentProgress
                 strategy={selectedStrategy}
-                routeName={route.name}
+                routeName={`${selectedRoutes.length} route${selectedRoutes.length > 1 ? 's' : ''}`}
                 pods={targetPods}
                 podStatuses={podStatuses}
                 events={events}
                 currentStageIndex={currentStageIndex}
                 stages={stages}
                 isRunning={isRunning}
-                gatewayName={route.gatewayDeployment.name}
+                gatewayName={gatewayDeployment.name}
                 onCancel={handleCancel}
               />
             )}
