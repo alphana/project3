@@ -1,9 +1,10 @@
-import { DeploymentStrategy, WorkloadPod, PodStatus, DeploymentEvent, DeploymentStage } from './types/deployment.types';
+import { DeploymentStrategy, WorkloadPod, PodStatus, DeploymentEvent, DeploymentStage, ApprovalState } from './types/deployment.types';
 import { Progress } from '../ui/Progress';
 import { Button } from '../ui/Button';
 import { DeploymentTopology } from './DeploymentTopology';
 import { DeploymentStageIndicator } from './DeploymentStageIndicator';
 import { DeploymentActivityLog } from './DeploymentActivityLog';
+import { TrafficSwitchApproval } from './TrafficSwitchApproval';
 import { STRATEGY_CONFIGS } from './types/strategy-configs';
 
 interface DeploymentProgressProps {
@@ -16,6 +17,9 @@ interface DeploymentProgressProps {
   stages: DeploymentStage[];
   isRunning: boolean;
   gatewayName: string;
+  approvalState?: ApprovalState;
+  onApprove?: () => void;
+  onReject?: () => void;
   onCancel: () => void;
 }
 
@@ -29,6 +33,9 @@ export function DeploymentProgress({
   stages,
   isRunning,
   gatewayName,
+  approvalState,
+  onApprove,
+  onReject,
   onCancel,
 }: DeploymentProgressProps) {
   const config = STRATEGY_CONFIGS[strategy];
@@ -62,6 +69,14 @@ export function DeploymentProgress({
         isRunning={isRunning}
       />
 
+      {approvalState?.isWaitingForApproval && onApprove && onReject && (
+        <TrafficSwitchApproval
+          approvalState={approvalState}
+          onApprove={onApprove}
+          onReject={onReject}
+        />
+      )}
+
       <DeploymentTopology
         pods={pods}
         podStatuses={podStatuses}
@@ -72,11 +87,13 @@ export function DeploymentProgress({
 
       <DeploymentActivityLog events={events} maxEntries={10} />
 
-      <div className="flex justify-center pt-4 border-t">
-        <Button variant="destructive" onClick={onCancel} disabled={!isRunning}>
-          Cancel Deployment
-        </Button>
-      </div>
+      {!approvalState?.isWaitingForApproval && (
+        <div className="flex justify-center pt-4 border-t">
+          <Button variant="destructive" onClick={onCancel} disabled={!isRunning}>
+            Cancel Deployment
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

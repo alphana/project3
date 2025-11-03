@@ -1,5 +1,7 @@
 export type PodStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'rollback';
 
+export type DeploymentEnvironment = 'blue' | 'green';
+
 export type DeploymentStrategy = 'rolling' | 'blue-green' | 'canary' | 'recreate';
 
 export type DeploymentStage =
@@ -20,7 +22,12 @@ export type DeploymentStage =
   | 'deploy_canary_50'
   | 'deploy_all_100'
   | 'monitor_metrics'
-  | 'switch_traffic';
+  | 'switch_traffic'
+  | 'prepare_green_environment'
+  | 'validate_green_environment'
+  | 'await_traffic_switch'
+  | 'switch_traffic_to_green'
+  | 'verify_green_traffic';
 
 export type DeploymentEventType =
   | 'stage_start'
@@ -28,7 +35,10 @@ export type DeploymentEventType =
   | 'pod_update'
   | 'rollback'
   | 'complete'
-  | 'error';
+  | 'error'
+  | 'awaiting_approval'
+  | 'approval_granted'
+  | 'approval_rejected';
 
 export interface WorkloadPod {
   id: string;
@@ -41,6 +51,7 @@ export interface WorkloadPod {
   };
   status?: PodStatus;
   currentStage?: number;
+  environment?: DeploymentEnvironment;
 }
 
 export interface RouteData {
@@ -133,6 +144,9 @@ export interface StrategyConfig {
   metricsWaitTime?: number;
   environmentSwitch?: 'instant' | 'gradual';
   downtimeExpected?: boolean;
+  requiresManualApproval?: boolean;
+  supportsInstantSwitch?: boolean;
+  hasMultipleEnvironments?: boolean;
 }
 
 export interface DeploymentStatistics {
@@ -154,6 +168,12 @@ export interface DeploymentStatistics {
   healthChecks: {
     passed: boolean;
     details: HealthCheckResult[];
+  };
+  blueGreenInfo?: {
+    greenEnvironmentReady: boolean;
+    trafficSwitchTime?: string;
+    approvalTime?: string;
+    blueEnvironmentKept: boolean;
   };
 }
 
@@ -180,6 +200,17 @@ export interface DeploymentSummaryData {
   failures?: DeploymentFailure[];
   rollbackCompleted?: boolean;
   recommendations?: string[];
+}
+
+export interface ApprovalState {
+  isWaitingForApproval: boolean;
+  approvalStage?: DeploymentStage;
+  greenEnvironmentHealth?: {
+    podsReady: number;
+    podsTotal: number;
+    healthChecksPassed: boolean;
+    healthCheckDetails: HealthCheckResult[];
+  };
 }
 
 export interface RollingUpdateConfigOptions {

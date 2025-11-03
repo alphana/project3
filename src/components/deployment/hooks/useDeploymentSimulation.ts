@@ -5,6 +5,7 @@ import {
   DeploymentEvent,
   PodStatus,
   DeploymentSummaryData,
+  ApprovalState,
 } from '../types/deployment.types';
 import { useDeploymentStrategy } from './useDeploymentStrategy';
 import { randomDelay, formatDuration } from '../../../lib/utils';
@@ -21,8 +22,12 @@ export function useDeploymentSimulation(
   const [podStatuses, setPodStatuses] = useState<Map<string, PodStatus>>(new Map());
   const [events, setEvents] = useState<DeploymentEvent[]>([]);
   const [summary, setSummary] = useState<DeploymentSummaryData | null>(null);
+  const [approvalState, setApprovalState] = useState<ApprovalState>({
+    isWaitingForApproval: false,
+  });
   const startTimeRef = useRef<number>(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const approvalResolverRef = useRef<((approved: boolean) => void) | null>(null);
 
   const { config, podBatches } = useDeploymentStrategy(strategy, pods);
 
@@ -104,6 +109,36 @@ export function useDeploymentSimulation(
     });
   };
 
+  const waitForApproval = useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      approvalResolverRef.current = resolve;
+    });
+  }, []);
+
+  const approveTrafficSwitch = useCallback(() => {
+    if (approvalResolverRef.current) {
+      addEvent({
+        type: 'approval_granted',
+        message: 'Traffic switch approved by operator',
+      });
+      setApprovalState({ isWaitingForApproval: false });
+      approvalResolverRef.current(true);
+      approvalResolverRef.current = null;
+    }
+  }, [addEvent]);
+
+  const rejectTrafficSwitch = useCallback(() => {
+    if (approvalResolverRef.current) {
+      addEvent({
+        type: 'approval_rejected',
+        message: 'Traffic switch rejected - initiating rollback',
+      });
+      setApprovalState({ isWaitingForApproval: false });
+      approvalResolverRef.current(false);
+      approvalResolverRef.current = null;
+    }
+  }, [addEvent]);
+
   const simulate = useCallback(async () => {
     if (!config) return;
 
@@ -112,6 +147,7 @@ export function useDeploymentSimulation(
     setSummary(null);
     setEvents([]);
     setCurrentStageIndex(0);
+    setApprovalState({ isWaitingForApproval: false });
 
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
@@ -120,6 +156,7 @@ export function useDeploymentSimulation(
 
     let failed = false;
     let syncedCount = 0;
+    let approvalTime: string | undefined;
 
     try {
       for (let i = 0; i < config.stages.length; i++) {
@@ -163,6 +200,60 @@ export function useDeploymentSimulation(
           if (failed) break;
         } else {
           await randomDelay(500, 1500);
+        }
+
+        if (signal.aborted) break;
+
+        if (stage === 'await_traffic_switch') {
+          const greenPodsReady = Array.from(podStatuses.values()).filter(
+            (s) => s === 'synced'
+          ).length;
+
+          setApprovalState({
+            isWaitingForApproval: true,
+            approvalStage: stage,
+            greenEnvironmentHealth: {
+              podsReady: greenPodsReady,
+              podsTotal: pods.length,
+              healthChecksPassed: greenPodsReady === pods.length,
+              healthCheckDetails: [
+                {
+                  name: 'HTTP Endpoints',
+                  passed: true,
+                  count: { passed: greenPodsReady, total: pods.length },
+                },
+                {
+                  name: 'Configuration',
+                  passed: true,
+                  message: 'Valid on all green pods',
+                },
+                {
+                  name: 'Upstream Services',
+                  passed: true,
+                  message: 'All reachable from green environment',
+                },
+              ],
+            },
+          });
+
+          addEvent({
+            type: 'awaiting_approval',
+            stage,
+            message: 'Green environment ready - awaiting manual approval for traffic switch',
+          });
+
+          const approvalGranted = await waitForApproval();
+          const currentTime = Date.now();
+          approvalTime = formatDuration(currentTime - startTimeRef.current);
+
+          if (!approvalGranted) {
+            failed = true;
+            addEvent({
+              type: 'error',
+              message: 'Traffic switch rejected by operator',
+            });
+            break;
+          }
         }
 
         if (signal.aborted) break;
@@ -212,25 +303,42 @@ export function useDeploymentSimulation(
           message: 'Deployment completed successfully',
         });
 
-        setSummary({
-          success: true,
-          statistics: {
-            routeVersion: { from: route.version, to: `${route.version}` },
-            deploymentRevision: { from: gatewayRevision, to: newRevision },
-            duration,
-            strategy,
-            podsSynced: { current: pods.length, total: pods.length, percentage: 100 },
-            healthChecks: {
-              passed: true,
-              details: [
-                { name: 'HTTP Endpoints', passed: true, count: { passed: pods.length, total: pods.length } },
-                { name: 'Configuration', passed: true, message: 'Valid on all pods' },
-                { name: 'Upstream Services', passed: true, message: 'All reachable' },
-                { name: 'Rate Limits', passed: true, message: 'Applied correctly' },
-              ],
-            },
+        const baseStatistics = {
+          routeVersion: { from: route.version, to: `${route.version}` },
+          deploymentRevision: { from: gatewayRevision, to: newRevision },
+          duration,
+          strategy,
+          podsSynced: { current: pods.length, total: pods.length, percentage: 100 },
+          healthChecks: {
+            passed: true,
+            details: [
+              { name: 'HTTP Endpoints', passed: true, count: { passed: pods.length, total: pods.length } },
+              { name: 'Configuration', passed: true, message: 'Valid on all pods' },
+              { name: 'Upstream Services', passed: true, message: 'All reachable' },
+              { name: 'Rate Limits', passed: true, message: 'Applied correctly' },
+            ],
           },
-        });
+        };
+
+        if (strategy === 'blue-green' && approvalTime) {
+          setSummary({
+            success: true,
+            statistics: {
+              ...baseStatistics,
+              blueGreenInfo: {
+                greenEnvironmentReady: true,
+                trafficSwitchTime: duration,
+                approvalTime,
+                blueEnvironmentKept: false,
+              },
+            },
+          });
+        } else {
+          setSummary({
+            success: true,
+            statistics: baseStatistics,
+          });
+        }
       }
     } catch (error) {
       console.error('Deployment simulation error:', error);
@@ -238,7 +346,7 @@ export function useDeploymentSimulation(
       setIsRunning(false);
       setCurrentStageIndex(config.stages.length);
     }
-  }, [config, pods, route, gatewayRevision, strategy, podBatches, addEvent, updatePodStatus]);
+  }, [config, pods, route, gatewayRevision, strategy, podBatches, addEvent, updatePodStatus, waitForApproval]);
 
   const cancel = useCallback(() => {
     if (abortControllerRef.current) {
@@ -255,5 +363,8 @@ export function useDeploymentSimulation(
     events,
     summary,
     stages: config?.stages || [],
+    approvalState,
+    approveTrafficSwitch,
+    rejectTrafficSwitch,
   };
 }

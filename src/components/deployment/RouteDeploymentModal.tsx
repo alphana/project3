@@ -62,6 +62,9 @@ export function RouteDeploymentModal({
     events,
     summary,
     stages,
+    approvalState,
+    approveTrafficSwitch,
+    rejectTrafficSwitch,
   } = useDeploymentSimulation(
     selectedStrategy,
     targetPods,
@@ -231,6 +234,9 @@ export function RouteDeploymentModal({
                 stages={stages}
                 isRunning={isRunning}
                 gatewayName={gatewayDeployment.name}
+                approvalState={approvalState}
+                onApprove={approveTrafficSwitch}
+                onReject={rejectTrafficSwitch}
                 onCancel={handleCancel}
               />
             )}
