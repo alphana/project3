@@ -4,6 +4,7 @@ import {
   RouteChange,
   GatewayDeploymentInfo,
 } from '../components/deployment/types/deployment.types';
+import { WorkloadNamespace } from '../components/revision/types/revision.types';
 
 export function generateMockPods(count: number = 12, namespaceName: string = 'production-east'): WorkloadPod[] {
   const namespace = {
@@ -211,6 +212,41 @@ export function generateMockRouteChanges(): RouteChange[] {
           to: ['read:users']
         },
       },
+    },
+  ];
+}
+
+export function generateMockWorkloadNamespaces(): WorkloadNamespace[] {
+  const routeChanges = generateMockRouteChanges();
+
+  return [
+    {
+      id: 'wl-ns-1',
+      name: 'production-east',
+      routeChangesCount: 3,
+      totalRoutes: 12,
+      routeChanges: routeChanges,
+    },
+    {
+      id: 'wl-ns-2',
+      name: 'production-west',
+      routeChangesCount: 2,
+      totalRoutes: 8,
+      routeChanges: routeChanges.slice(0, 2),
+    },
+    {
+      id: 'wl-ns-3',
+      name: 'production-central',
+      routeChangesCount: 0,
+      totalRoutes: 10,
+      routeChanges: [],
+    },
+    {
+      id: 'wl-ns-4',
+      name: 'staging-primary',
+      routeChangesCount: 1,
+      totalRoutes: 5,
+      routeChanges: [routeChanges[0]],
     },
   ];
 }
