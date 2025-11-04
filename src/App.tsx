@@ -34,51 +34,10 @@ function App() {
             </h2>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Gateway Name</label>
-                  <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <code className="text-sm text-gray-900">{gatewayDeployment.name}</code>
-                  </div>
-                </div>
+              
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Revision</label>
-                  <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200 flex items-center gap-3">
-                    <code className="text-sm font-medium text-gray-900">
-                      {gatewayDeployment.currentRevision}
-                    </code>
-                    <span className="text-gray-400">→</span>
-                    <code className="text-sm font-medium text-blue-700">
-                      {gatewayDeployment.targetRevision}
-                    </code>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Available Namespaces</label>
-                  <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-sm text-gray-900">
-                      {gatewayDeployment.namespaces.length} namespaces
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {gatewayDeployment.namespaces.map((ns) => ns.name).join(', ')}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Route Changes</label>
-                  <div className="px-4 py-3 bg-amber-50 rounded-lg border border-amber-200">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-amber-600" />
-                      <span className="text-sm font-medium text-amber-900">
-                        {routeChanges.length} routes modified
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                    
+ 
 
               <div className="pt-6 border-t">
                 <Button
