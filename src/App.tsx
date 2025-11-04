@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { RouteDeploymentModal } from './components/deployment/RouteDeploymentModal';
 import { RevisionCreationModal } from './components/revision/RevisionCreationModal';
-import { RevisionsDataTable } from './components/revision/RevisionsDataTable';
+import { RevisionsPage } from './components/RevisionsPage';
 import { RevisionData } from './components/revision/types/revision.types';
 import { generateMockWorkloadNamespaces } from './lib/mockData';
-import { Button } from './components/ui/Button';
-import { Package } from 'lucide-react';
 
 function App() {
   const [isDeploymentModalOpen, setIsDeploymentModalOpen] = useState(false);
@@ -40,37 +38,20 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-        
-
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-gray-900 mb-3">
-                Gateway Deployment Manager
-              </h1>
-              <p className="text-lg text-gray-600">
-                Create revisions and deploy route changes to your gateway clusters
-              </p>
-            </div>
-
-            <div className="flex justify-center">
-              <Button
-                size="lg"
-                onClick={() => setIsRevisionModalOpen(true)}
-                className="w-full max-w-md"
-              >
-                <Package className="h-5 w-5 mr-2" />
-                Create New Revision
-              </Button>
-            </div>
-          </div>
-
-          {revisions.length > 0 && (
-            <RevisionsDataTable revisions={revisions} onDeploy={handleDeploy} />
-          )}
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-6 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Gateway Deployment Manager</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Create revisions and deploy route changes to your gateway clusters
+          </p>
         </div>
+
+        <RevisionsPage
+          revisions={revisions}
+          onCreateRevision={() => setIsRevisionModalOpen(true)}
+          onDeploy={handleDeploy}
+        />
       </div>
 
       <RevisionCreationModal
