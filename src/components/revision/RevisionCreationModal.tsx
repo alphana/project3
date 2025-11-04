@@ -13,6 +13,7 @@ interface RevisionCreationModalProps {
   onClose: () => void;
   namespaces: WorkloadNamespace[];
   onRevisionCreated: (revision: RevisionData) => void;
+  nextRevisionNumber: number;
 }
 
 type Step = 'namespace' | 'routes' | 'summary';
@@ -28,6 +29,7 @@ export function RevisionCreationModal({
   onClose,
   namespaces,
   onRevisionCreated,
+  nextRevisionNumber,
 }: RevisionCreationModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>('namespace');
   const [selectedNamespace, setSelectedNamespace] = useState<WorkloadNamespace | null>(null);
@@ -62,23 +64,16 @@ export function RevisionCreationModal({
       selectedRouteIds.includes(rc.routeId)
     );
 
-    const totalChanges = selectedRoutes.reduce((acc, route) => {
-      return acc + Object.keys(route.changes).length;
-    }, 0);
-
-    const currentRevisionNumber = 42;
-    const newRevisionNumber = currentRevisionNumber + 1;
-
     const revision: RevisionData = {
       id: `rev-${Date.now()}`,
-      revisionNumber: `rev-${newRevisionNumber}`,
+      revisionNumber: `rev-${nextRevisionNumber}`,
       createdAt: new Date().toISOString(),
       createdBy: 'operator@example.com',
       namespace: selectedNamespace.name,
       routesCount: selectedRoutes.length,
       status: 'ready',
       routes: selectedRoutes,
-      description: `Revision ${newRevisionNumber} for ${selectedNamespace.name}`,
+      description: `Revision ${nextRevisionNumber} for ${selectedNamespace.name}`,
     };
 
     setIsCreating(false);
@@ -100,7 +95,7 @@ export function RevisionCreationModal({
         totalChangesCount: selectedNamespace.routeChanges
           .filter((rc) => selectedRouteIds.includes(rc.routeId))
           .reduce((acc, rc) => acc + Object.keys(rc.changes).length, 0),
-        revisionNumber: 'rev-43',
+        revisionNumber: `rev-${nextRevisionNumber}`,
         routes: selectedNamespace.routeChanges.filter((rc) =>
           selectedRouteIds.includes(rc.routeId)
         ),

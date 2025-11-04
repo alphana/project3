@@ -3,30 +3,40 @@ import { RouteDeploymentModal } from './components/deployment/RouteDeploymentMod
 import { RevisionCreationModal } from './components/revision/RevisionCreationModal';
 import { RevisionsDataTable } from './components/revision/RevisionsDataTable';
 import { RevisionData } from './components/revision/types/revision.types';
-import {
-  generateMockGatewayDeployment,
-  generateMockRouteChanges,
-  generateMockWorkloadNamespaces,
-} from './lib/mockData';
+import { generateMockWorkloadNamespaces } from './lib/mockData';
 import { Button } from './components/ui/Button';
-import { Rocket, Package } from 'lucide-react';
+import { Package } from 'lucide-react';
 
 function App() {
   const [isDeploymentModalOpen, setIsDeploymentModalOpen] = useState(false);
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [revisions, setRevisions] = useState<RevisionData[]>([]);
+  const [selectedRevision, setSelectedRevision] = useState<RevisionData | null>(null);
+  const [nextRevisionNumber, setNextRevisionNumber] = useState(43);
 
-  const gatewayDeployment = generateMockGatewayDeployment();
-  const routeChanges = generateMockRouteChanges();
   const workloadNamespaces = generateMockWorkloadNamespaces();
 
   const handleRevisionCreated = (revision: RevisionData) => {
     setRevisions((prev) => [revision, ...prev]);
+    setNextRevisionNumber((prev) => prev + 1);
   };
 
   const handleDeploy = (revision: RevisionData) => {
-    console.log('Deploy revision:', revision);
+    setSelectedRevision(revision);
     setIsDeploymentModalOpen(true);
+  };
+
+  const handleDeploymentComplete = (revision: RevisionData) => {
+    setRevisions((prev) =>
+      prev.map((rev) =>
+        rev.id === revision.id ? { ...rev, status: 'deployed' as const } : rev
+      )
+    );
+  };
+
+  const handleDeploymentModalClose = () => {
+    setIsDeploymentModalOpen(false);
+    setSelectedRevision(null);
   };
 
   return (
@@ -45,23 +55,14 @@ function App() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex justify-center">
               <Button
                 size="lg"
                 onClick={() => setIsRevisionModalOpen(true)}
-                variant="outline"
-                className="w-full"
+                className="w-full max-w-md"
               >
                 <Package className="h-5 w-5 mr-2" />
-                Create Revision
-              </Button>
-              <Button
-                size="lg"
-                onClick={() => setIsDeploymentModalOpen(true)}
-                className="w-full"
-              >
-                <Rocket className="h-5 w-5 mr-2" />
-                Start Deployment
+                Create New Revision
               </Button>
             </div>
           </div>
@@ -77,13 +78,14 @@ function App() {
         onClose={() => setIsRevisionModalOpen(false)}
         namespaces={workloadNamespaces}
         onRevisionCreated={handleRevisionCreated}
+        nextRevisionNumber={nextRevisionNumber}
       />
 
       <RouteDeploymentModal
         isOpen={isDeploymentModalOpen}
-        onClose={() => setIsDeploymentModalOpen(false)}
-        gatewayDeployment={gatewayDeployment}
-        routeChanges={routeChanges}
+        onClose={handleDeploymentModalClose}
+        revision={selectedRevision}
+        onDeploymentComplete={handleDeploymentComplete}
       />
     </div>
   );
