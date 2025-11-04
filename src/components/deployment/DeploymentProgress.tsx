@@ -1,7 +1,6 @@
 import { DeploymentStrategy, WorkloadPod, PodStatus, DeploymentEvent, DeploymentStage, ApprovalState } from './types/deployment.types';
 import { Progress } from '../ui/Progress';
-import { Button } from '../ui/Button';
-import { DeploymentTopology } from './DeploymentTopology';
+import { Button } from '../ui/Button'; 
 import { DeploymentStageIndicator } from './DeploymentStageIndicator';
 import { DeploymentActivityLog } from './DeploymentActivityLog';
 import { TrafficSwitchApproval } from './TrafficSwitchApproval';
