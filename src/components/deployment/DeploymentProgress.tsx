@@ -77,13 +77,7 @@ export function DeploymentProgress({
         />
       )}
 
-      <DeploymentTopology
-        pods={pods}
-        podStatuses={podStatuses}
-        gatewayName={gatewayName}
-        width={800}
-        height={400}
-      />
+ 
 
       <DeploymentActivityLog events={events} maxEntries={10} />
 
