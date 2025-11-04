@@ -93,38 +93,7 @@ function App() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <GitBranch className="h-5 w-5 text-blue-600" />
-              Key Features
-            </h2>
-            <ul className="space-y-3 text-gray-600">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold mt-1">•</span>
-                <span><strong>Multi-Route Deployment:</strong> Select and deploy multiple route changes in a single deployment</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold mt-1">•</span>
-                <span><strong>Side-by-Side Comparison:</strong> Review changes between current and proposed route configurations</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold mt-1">•</span>
-                <span><strong>Namespace Selection:</strong> Choose target namespace with automatic pod count detection</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold mt-1">•</span>
-                <span><strong>4 Deployment Strategies:</strong> Rolling Update, Blue-Green, Canary, and Recreate</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold mt-1">•</span>
-                <span><strong>Real-time Visualization:</strong> Polar tree topology showing pod status across namespaces</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold mt-1">•</span>
-                <span><strong>Automatic Rollback:</strong> Simulated failure detection with automatic rollback capability</span>
-              </li>
-            </ul>
-          </div>
+          
         </div>
       </div>
 
